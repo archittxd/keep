@@ -310,6 +310,10 @@ def gen_rules(
                                         "type": "string",
                                         "description": "Devil's advocate argument for why this rule might be too specific or narrow"
                                     },
+                                    "ShortRuleName": {
+                                        "type": "string",
+                                        "description": "Short name for the rule, 20 characters or less"
+                                    },
                                     "Score": {
                                         "type": "integer",
                                         "description": "A score from 1 to 100 indicating the severity or importance of the result",

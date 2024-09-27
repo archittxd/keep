@@ -29,7 +29,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormattedQueryCell } from "./FormattedQueryCell";
 import { DeleteRuleCell } from "./CorrelationSidebar/DeleteRule";
 import {PlusIcon} from "@radix-ui/react-icons";
-
+import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@tremor/react";
+import { BoltIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { AIGenRules } from './AIGenRules'; // Add this import at the top of the file
 
 const TIMEFRAME_UNITS_FROM_SECONDS= {
   seconds: (amount: number) => amount,
@@ -85,6 +87,7 @@ export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
   }, [selectedRule]);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [selectedTab, setSelectedTab] = useState<string>("existing");
 
   const onCorrelationClick = () => {
     setIsSidebarOpen(true);
@@ -162,41 +165,58 @@ export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
           Create Correlation
         </Button>
       </div>
-      <Card className="flex-1 mt-10">
-        <Table>
-          <TableHead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHeaderCell key={header.id}>
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
-                  </TableHeaderCell>
+      <TabGroup className="mt-6">
+        <TabList color="orange">
+          <Tab icon={BoltIcon} onClick={() => setSelectedTab("existing")}>
+            Existing Correlations
+          </Tab>
+          <Tab icon={SparklesIcon} onClick={() => setSelectedTab("ai-suggestions")}>
+            AI Suggestions
+          </Tab>
+        </TabList>
+        <TabPanels>
+          <TabPanel>
+            <Card className="mt-4">
+              <Table>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <TableHeaderCell key={header.id}>
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                      </TableHeaderCell>
+                    ))}
+                  </TableRow>
                 ))}
-              </TableRow>
-            ))}
-          </TableHead>
-          <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                className="cursor-pointer hover:bg-slate-50 group"
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    onClick={() => router.push(`?id=${cell.row.original.id}`)}
+                {table.getRowModel().rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    className="cursor-pointer hover:bg-slate-50 group"
                   >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        onClick={() => router.push(`?id=${cell.row.original.id}`)}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
                 ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+              </Table>
+            </Card>
+          </TabPanel>
+          <TabPanel>
+            <Card className="mt-4">
+              <div className="p-4 text-center text-gray-500">
+                <AIGenRules />
+              </div>
+            </Card>
+          </TabPanel>
+        </TabPanels>
+      </TabGroup>
       <CorrelationSidebar
         isOpen={isSidebarOpen}
         toggle={onCloseCorrelation}

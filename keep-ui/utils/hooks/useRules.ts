@@ -33,3 +33,17 @@ export const useRules = (options?: SWRConfiguration) => {
     options
   );
 };
+
+export const useAIGeneratedRules = (options?: SWRConfiguration) => {
+  const apiUrl = getApiURL();
+  const { data: session } = useSession();
+
+  return useSWR(
+    () => (session ? `${apiUrl}/rules/gen_rules` : null),
+    async (url) => {
+      const response = await fetcher(url, session?.accessToken);
+      return JSON.parse(JSON.stringify(response)); // Ensure we return a JSON object
+    },
+    options
+  );
+};
