@@ -38,12 +38,23 @@ export const useAIGeneratedRules = (options?: SWRConfiguration) => {
   const apiUrl = getApiURL();
   const { data: session } = useSession();
 
-  return useSWR(
+  const { data, error, isLoading, mutate } = useSWR(
     () => (session ? `${apiUrl}/rules/gen_rules` : null),
     async (url) => {
       const response = await fetcher(url, session?.accessToken);
       return JSON.parse(JSON.stringify(response)); // Ensure we return a JSON object
     },
-    options
+    {
+      ...options,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    }
   );
+
+  const mutateAIGeneratedRules = async () => {
+    // Set data to undefined to trigger loading state
+    await mutate(undefined, { revalidate: true });
+  };
+
+  return { data, error, isLoading, mutateAIGeneratedRules };
 };
