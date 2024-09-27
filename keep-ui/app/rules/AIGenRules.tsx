@@ -267,7 +267,7 @@ export const AIGenRules: React.FC = () => {
         </button>
         <h2 className="text-xl font-semibold mt-4 self-center">AI Generated Rules</h2>
       </div>
-      <p className="text-center">{data.reason}</p>
+      <p className="text-center">{data.summery}</p>
       <Table>
         <TableHead>
           {table.getHeaderGroups().map((headerGroup) => (

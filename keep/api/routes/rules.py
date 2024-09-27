@@ -273,10 +273,6 @@ def gen_rules(
                             "type": "boolean",
                             "description": "Indicates whether there are any meaningful results to return"
                         },
-                        "reason": {
-                            "type": "string",
-                            "description": "Explanation for why results are or are not present"
-                        },
                         "results": {
                             "type": "array",
                             "description": "An array of analysis results",
@@ -324,6 +320,10 @@ def gen_rules(
                                 "required": ["CELRule", "Timeframe", "GroupBy", "Score", "ChainOfThought", "WhyTooGeneral", "WhyTooSpecific"],
                                 "additionalProperties": False
                             }
+                        },
+                        "summery": {
+                            "type": "string",
+                            "description": "One liner summery of the results, mention what you noticed in the data and how you created the rules"
                         }
                     },
                     "required": ["hasResults", "reason", "results"],
