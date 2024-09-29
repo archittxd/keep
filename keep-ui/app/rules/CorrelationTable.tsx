@@ -88,6 +88,7 @@ export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<string>("existing");
+  const [isAIGenRulesLoaded, setIsAIGenRulesLoaded] = useState(false);
 
   const onCorrelationClick = () => {
     setIsSidebarOpen(true);
@@ -170,7 +171,13 @@ export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
           <Tab icon={BoltIcon} onClick={() => setSelectedTab("existing")}>
             Existing Correlations
           </Tab>
-          <Tab icon={SparklesIcon} onClick={() => setSelectedTab("ai-suggestions")}>
+          <Tab
+            icon={SparklesIcon}
+            onClick={() => {
+              setSelectedTab("ai-suggestions");
+              setIsAIGenRulesLoaded(true);
+            }}
+          >
             AI Suggestions
           </Tab>
         </TabList>
@@ -211,7 +218,7 @@ export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
           <TabPanel>
             <Card className="mt-4">
               <div className="p-4 text-center text-gray-500">
-                <AIGenRules />
+                {isAIGenRulesLoaded ? <AIGenRules /> : null}
               </div>
             </Card>
           </TabPanel>

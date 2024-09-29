@@ -167,7 +167,7 @@ export const AIGenRules: React.FC = () => {
           <div className="flex space-x-2">
             <Icon
               icon={InformationCircleIcon}
-              tooltip={`Chain of Thought: ${rule.ChainOfThought}`}
+              tooltip={`Thinking behind the rule: ${rule.ChainOfThought}`}
               size="xs"
               color="gray"
               className="ml-1"
@@ -175,7 +175,7 @@ export const AIGenRules: React.FC = () => {
             />
             <Icon
               icon={ExclamationTriangleIcon}
-              tooltip={`Why Too General: ${rule.WhyTooGeneral}`}
+              tooltip={`Why this rule is too general: ${rule.WhyTooGeneral}`}
               size="xs"
               color="gray"
               className="ml-1"
@@ -183,7 +183,7 @@ export const AIGenRules: React.FC = () => {
             />
             <Icon
               icon={QuestionMarkCircleIcon}
-              tooltip={`Why Too Specific: ${rule.WhyTooSpecific}`}
+              tooltip={`Why this rule is too specific: ${rule.WhyTooSpecific}`}
               size="xs"
               color="gray"
               className="ml-1"
