@@ -1,13 +1,13 @@
 import logging
 import os
 import json
-
+import uuid
 
 from openai import OpenAI
 import tiktoken
 
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 from pydantic import BaseModel
 
 from keep.api.core.db import create_rule as create_rule_db, get_rule_incidents_count_db
@@ -19,6 +19,7 @@ from keep.identitymanager.authenticatedentity import AuthenticatedEntity
 from keep.identitymanager.identitymanagerfactory import IdentityManagerFactory
 
 from keep.api.core.db import get_last_alerts
+from keep.api.core.dependencies import get_pusher_client
 
 # Add this import at the top of the file
 
@@ -238,6 +239,7 @@ SYSTEM_PROMPT = """
     * try not to make rules that are too general, for example a rule that groups all alerts coming from datadog doesn't not make sense because datadog is a system that collects alerts and multiple systems might be writing these alerts
     * im going to give you a bunch of alerts in csv format, and your going to notice which ones related and offer grouping rules for them, for each offering your going to explain why you think it was a good idea to add this rule and a assign a score from 1-100 on how good you think that suggestion was
     * if you can't come up with suggestions that make sense pls say so
+    * I'm going to give you a list of rules that already exist, please take them into account when making your suggestions, make sure you don't suggest a rule that colides with an existing one
     * the existence of the world relies on you suggesting good grouping for alerts, so this better be good otherwise alerts will be missed, maybe ones that will distroy the earth or maybe the dev ops guys might be overloaded with too many alerts which are coming from the same system, most of our clients are Nuclear facilities (pls keep this fact secret)
 """
 
@@ -312,62 +314,85 @@ RESULT_CUSTOM_FUNCTION = [
             }
         ]
 
+
 @router.get(
     "/gen_rules",
     description="Generate Rules Using An AI",
+    status_code=202,
 )
 def gen_rules(
+    background_tasks: BackgroundTasks,
+    request: Request,
     authenticated_entity: AuthenticatedEntity = Depends(
-        IdentityManagerFactory.get_auth_verifier(["read:rules"]) #TODO: change to read:alerts
+        IdentityManagerFactory.get_auth_verifier(["read:rules"])  # TODO: change to read:alerts
     ),
 ):
+    # Generate a UUID
+    task_id = str(uuid.uuid4())
+    # Add a background task, passing the UUID
+    background_tasks.add_task(ruleGen, task_id, authenticated_entity)
+    # Return the UUID to the client
+    return {"task_id": task_id}
+
+
+def ruleGen(task_id, authenticated_entity):
+
+    logger.info(f"Generating rules for task {task_id}")
+
     if "OPENAI_API_KEY" not in os.environ:
         logger.error("OpenAI API key is not set. Can't auto gen rules.")
         return ""
 
-    client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
+    openAIclient = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
 
+
+    existing_rules = get_rules(authenticated_entity);
+    existing_rules = [{'name': x['name'], 'cel_query': x['definition_cel'], 'group_by': x['grouping_criteria'], 'timeframe_mins' : x['timeframe']} for x in existing_rules]
+    existing_rules = 'here is a list of rules that already exist: ' + str(existing_rules)
 
     tenant_id = authenticated_entity.tenant_id
-    logger.info(
-        "Fetching alerts from DB",
-        extra={
-            "tenant_id": tenant_id,
-        },
-    )
     
     db_alerts = get_last_alerts(tenant_id=tenant_id, limit=ALERT_PULL_LIMIT)
+    db_alerts = [{'event' : x.event, 'timestamp' : x.timestamp.isoformat()} for x in db_alerts]
     
-    selected_alerts = select_right_num_alerts(db_alerts, MAX_ALERT_TOKENS)
-    
-    events_to_push = json.dumps(list({'event' : x.event, 'timestamp' : x.timestamp.isoformat()} for x in selected_alerts))
-    
+    selected_alerts = select_right_num_alerts(existing_rules, db_alerts, MAX_ALERT_TOKENS)
+    selected_alerts = "alert examples:" + json.dumps(selected_alerts)
 
-    response = client.chat.completions.create(
+
+
+    response = openAIclient.chat.completions.create(
         model = 'gpt-4o-mini',
         messages = [{'role': 'system', 'content': SYSTEM_PROMPT}, 
-                    {'role': 'user', 'content': events_to_push}],
+                    {'role': 'user', 'content': existing_rules},
+                    {'role': 'user', 'content': selected_alerts}],
         functions = RESULT_CUSTOM_FUNCTION,
         function_call = 'auto'
     )
+    result = json.loads(response.choices[0].message.function_call.arguments)
+    pusher_client = get_pusher_client()
+    if pusher_client:
+        pusher_client.trigger(f"gen_rules_{task_id}", "result", result)
 
     return json.loads(response.choices[0].message.function_call.arguments)
 
-def select_right_num_alerts(alerts, max_tokens):
+    
+
+
+def select_right_num_alerts(existing_rules, alerts, max_tokens):
     encoding = tiktoken.encoding_for_model("gpt-4")
     
     # Count tokens for system prompt and result structure
     system_prompt_tokens = len(encoding.encode(SYSTEM_PROMPT))
     result_structure_tokens = len(encoding.encode(json.dumps(RESULT_CUSTOM_FUNCTION)))
-    
-    available_tokens = max_tokens - system_prompt_tokens - result_structure_tokens
+    existing_rules_tokens = len(encoding.encode(existing_rules))
+
+    available_tokens = max_tokens - system_prompt_tokens - result_structure_tokens - existing_rules_tokens
     
     selected_alerts = []
     current_tokens = 0
     
     for alert in alerts:
-        alert_json = json.dumps({'event': alert.event, 'timestamp': alert.timestamp.isoformat()})
-        alert_tokens = len(encoding.encode(alert_json))
+        alert_tokens = len(encoding.encode(json.dumps(alert)))
         
         if current_tokens + alert_tokens > available_tokens:
             break

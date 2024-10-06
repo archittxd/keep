@@ -2,6 +2,8 @@ import { useSession } from "next-auth/react";
 import useSWR, { SWRConfiguration } from "swr";
 import { getApiURL } from "utils/apiUrl";
 import { fetcher } from "utils/fetcher";
+import { useState, useEffect } from "react";
+import Pusher from "pusher-js";
 
 export type Rule = {
   id: string;
@@ -37,12 +39,35 @@ export const useRules = (options?: SWRConfiguration) => {
 export const useAIGeneratedRules = (options?: SWRConfiguration) => {
   const apiUrl = getApiURL();
   const { data: session } = useSession();
+  const [pusherChannel, setPusherChannel] = useState<Channel | null>(null);
 
   const { data, error, isLoading, mutate } = useSWR(
     () => (session ? `${apiUrl}/rules/gen_rules` : null),
     async (url) => {
       const response = await fetcher(url, session?.accessToken);
-      return JSON.parse(JSON.stringify(response)); // Ensure we return a JSON object
+      const { task_id } = response;
+
+      // Initialize Pusher connection
+      const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+        cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+      });
+
+      const channel = pusher.subscribe(`gen_rules_${task_id}`);
+      setPusherChannel(channel);
+
+      return new Promise((resolve, reject) => {
+        channel.bind('result', (data: any) => {
+          pusher.unsubscribe(`gen_rules_${task_id}`);
+          resolve(data);
+        });
+
+        // Add a timeout to handle cases where Pusher doesn't respond
+        setTimeout(() => {
+          pusher.unsubscribe(`gen_rules_${task_id}`);
+          reject(new Error('Timeout waiting for AI generated rules'));
+        }, 60 * 3 * 1000); // 3 minutes timeout
+      });
+
     },
     {
       ...options,
@@ -52,9 +77,22 @@ export const useAIGeneratedRules = (options?: SWRConfiguration) => {
   );
 
   const mutateAIGeneratedRules = async () => {
+    // Unsubscribe from the previous channel if it exists
+    if (pusherChannel) {
+      pusherChannel.unsubscribe();
+    }
     // Set data to undefined to trigger loading state
     await mutate(undefined, { revalidate: true });
   };
+
+  useEffect(() => {
+    return () => {
+      // Cleanup: unsubscribe from the channel when the component unmounts
+      if (pusherChannel) {
+        pusherChannel.unsubscribe();
+      }
+    };
+  }, [pusherChannel]);
 
   return { data, error, isLoading, mutateAIGeneratedRules };
 };
