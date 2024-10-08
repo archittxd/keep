@@ -308,7 +308,7 @@ RESULT_CUSTOM_FUNCTION = [
                             "description": "One liner summery of the results, mention what you noticed in the data and how you created the rules"
                         }
                     },
-                    "required": ["hasResults", "reason", "results"],
+                    "required": ["hasResults", "reason", "results", "summery"],
                     "additionalProperties": False
                 }
             }
@@ -358,8 +358,6 @@ def ruleGen(task_id, authenticated_entity):
     selected_alerts = select_right_num_alerts(existing_rules, db_alerts, MAX_ALERT_TOKENS)
     selected_alerts = "alert examples:" + json.dumps(selected_alerts)
 
-
-
     response = openAIclient.chat.completions.create(
         model = 'gpt-4o-mini',
         messages = [{'role': 'system', 'content': SYSTEM_PROMPT}, 
@@ -370,12 +368,11 @@ def ruleGen(task_id, authenticated_entity):
     )
     result = json.loads(response.choices[0].message.function_call.arguments)
     pusher_client = get_pusher_client()
-    if pusher_client:
-        pusher_client.trigger(f"gen_rules_{task_id}", "result", result)
-
-    return json.loads(response.choices[0].message.function_call.arguments)
-
-    
+    if pusher_client:      
+        try:
+            pusher_client.trigger("private-{}".format(tenant_id), "rules-aigen-created", result)
+        except Exception as e:
+            logger.error(f"Error triggering Pusher event: {e}")
 
 
 def select_right_num_alerts(existing_rules, alerts, max_tokens):

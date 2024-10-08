@@ -10,23 +10,14 @@ import {
   flexRender,
   Header
 } from "@tanstack/react-table";
-import { useAIGeneratedRules } from "utils/hooks/useRules";
+import { useRulePusherUpdates, AIGeneratedRule, useGenRules } from "utils/hooks/useRules";
 import { FaArrowDown, FaArrowRight, FaArrowUp, FaPlus, FaSpinner, FaSync } from "react-icons/fa";
 import { InformationCircleIcon, ExclamationTriangleIcon, QuestionMarkCircleIcon } from "@heroicons/react/24/solid";
 import { useSession } from "next-auth/react";
 import { getApiURL } from "utils/apiUrl";
 import useSWR, { mutate } from "swr";
 
-type AIGeneratedRule = {
-  ShortRuleName: string;
-  CELRule: string;
-  Timeframe: string;
-  GroupBy: string[];
-  ChainOfThought: string;
-  WhyTooGeneral: string;
-  WhyTooSpecific: string;
-  Score: number;
-};
+
 
 const columnHelper = createColumnHelper<AIGeneratedRule>();
 
@@ -83,19 +74,36 @@ const SortableHeaderCell: React.FC<SortableHeaderCellProps> = ({
 };
 
 export const AIGenRules: React.FC = () => {
-  const { data, error, isLoading, mutateAIGeneratedRules } = useAIGeneratedRules();
+  const { _1, _2, _3, triggerGenRules } = useGenRules();
   const { data: session } = useSession();
   const [sorting, setSorting] = React.useState<SortingState>([]);
+
+  const [isLoadingRules, setIsLoadingRules] = useState(true);
+  const [generatedRules, setGeneratedRules] = useState<AIGeneratedRule[]>([]);
+
   const [loadingRows, setLoadingRows] = useState<{ [key: string]: boolean }>({});
   const [successRows, setSuccessRows] = useState<{ [key: string]: boolean }>({});
 
-  const handleGenerateMoreRules = async () => {
-    try {
-      await mutateAIGeneratedRules();
-      setSuccessRows({}); // Reset success states for newly generated rules
-    } catch (error) {
-      console.error('Error generating more rules:', error);
+  const mutateAIGeneratedRules = (rules: AIGeneratedRule[]) => {
+    setGeneratedRules(rules);
+    setIsLoadingRules(false);
+  };
+
+  const { data:serverGenRules } = useRulePusherUpdates();
+
+  useEffect(() => {
+    console.log("serverGenRules", serverGenRules);
+
+    if (Array.isArray(serverGenRules) && (0 === serverGenRules.length)) {
+      return;
     }
+    
+    mutateAIGeneratedRules(serverGenRules);
+  }, [serverGenRules]);
+
+  const handleGenerateMoreRules = () => {
+    setIsLoadingRules(true);
+    triggerGenRules();
   };
 
   const handleAddRule = async (rule: AIGeneratedRule) => {
@@ -221,7 +229,7 @@ export const AIGenRules: React.FC = () => {
 
   const table = useReactTable({
     columns,
-    data: data?.results || [],
+    data: generatedRules?.results || [],
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
@@ -230,7 +238,7 @@ export const AIGenRules: React.FC = () => {
     },
   });
 
-  if (isLoading) {
+  if (isLoadingRules) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="text-center">
@@ -242,23 +250,15 @@ export const AIGenRules: React.FC = () => {
     );
   }
 
-  if (error) {
-    return <div>Error loading AI recommendations: {error.message}</div>;
-  }
-
-  if (!data || !data.results || data.results.length === 0) {
-    return <div>No AI recommendations available.</div>;
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex flex-col items-start">
         <button
           onClick={handleGenerateMoreRules}
           className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 flex items-center"
-          disabled={isLoading}
+          disabled={isLoadingRules}
         >
-          {isLoading ? (
+          {isLoadingRules ? (
             <FaSpinner className="animate-spin mr-2" />
           ) : (
             <FaSync className="mr-2" />
@@ -267,7 +267,7 @@ export const AIGenRules: React.FC = () => {
         </button>
         <h2 className="text-xl font-semibold mt-4 self-center">AI Generated Rules</h2>
       </div>
-      <p className="text-center">{data.summery}</p>
+      <p className="text-center">{generatedRules.summery}</p>
       <Table>
         <TableHead>
           {table.getHeaderGroups().map((headerGroup) => (
