@@ -428,5 +428,6 @@ def check_cel_rule(rule_str):
         env.program(ast)
         return True
 
-    except:
+    except Exception as e:
+        logger.info(f"Error validating CEL rule: {e}")
         return False
