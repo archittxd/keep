@@ -3,6 +3,7 @@ import os
 import json
 import uuid
 
+import celpy
 from openai import OpenAI
 import tiktoken
 
@@ -337,42 +338,52 @@ def gen_rules(
 
 def ruleGen(task_id, authenticated_entity):
 
-    logger.info(f"Generating rules for task {task_id}")
+    try:
+        logger.info(f"Generating rules for task {task_id}")
 
-    if "OPENAI_API_KEY" not in os.environ:
-        logger.error("OpenAI API key is not set. Can't auto gen rules.")
-        return ""
+        if "OPENAI_API_KEY" not in os.environ:
+            logger.error("OpenAI API key is not set. Can't auto gen rules.")
+            return ""
 
-    openAIclient = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
+        openAIclient = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
 
 
-    existing_rules = get_rules(authenticated_entity);
-    existing_rules = [{'name': x['name'], 'cel_query': x['definition_cel'], 'group_by': x['grouping_criteria'], 'timeframe_mins' : x['timeframe']} for x in existing_rules]
-    existing_rules = 'here is a list of rules that already exist: ' + str(existing_rules)
+        existing_rules = get_rules(authenticated_entity);
+        existing_rules = [{'name': x['name'], 'cel_query': x['definition_cel'], 'group_by': x['grouping_criteria'], 'timeframe_mins' : x['timeframe']} for x in existing_rules]
+        existing_rules = 'here is a list of rules that already exist: ' + str(existing_rules)
 
-    tenant_id = authenticated_entity.tenant_id
+        tenant_id = authenticated_entity.tenant_id
+        
+        db_alerts = get_last_alerts(tenant_id=tenant_id, limit=ALERT_PULL_LIMIT)
+        db_alerts = [{'event' : x.event, 'timestamp' : x.timestamp.isoformat()} for x in db_alerts]
+        
+        selected_alerts = select_right_num_alerts(existing_rules, db_alerts, MAX_ALERT_TOKENS)
+        selected_alerts = "alert examples:" + json.dumps(selected_alerts)
+
+        response = openAIclient.chat.completions.create(
+            model = 'gpt-4o-mini',
+            messages = [{'role': 'system', 'content': SYSTEM_PROMPT}, 
+                        {'role': 'user', 'content': existing_rules},
+                        {'role': 'user', 'content': selected_alerts}],
+            functions = RESULT_CUSTOM_FUNCTION,
+            function_call = 'auto'
+        )
+        result = json.loads(response.choices[0].message.function_call.arguments)
+
+        logger.info("Got {} rules back from the llm".format(len(result['results'])))
+
+        result['results'] = [rule for rule in result['results'] if check_cel_rule(rule['CELRule'])]
+
+        
+        pusher_client = get_pusher_client()
+        if pusher_client:      
+            try:
+                pusher_client.trigger("private-{}".format(tenant_id), "rules-aigen-created", result)
+            except Exception as e:
+                logger.error(f"Error triggering Pusher event: {e}")
     
-    db_alerts = get_last_alerts(tenant_id=tenant_id, limit=ALERT_PULL_LIMIT)
-    db_alerts = [{'event' : x.event, 'timestamp' : x.timestamp.isoformat()} for x in db_alerts]
-    
-    selected_alerts = select_right_num_alerts(existing_rules, db_alerts, MAX_ALERT_TOKENS)
-    selected_alerts = "alert examples:" + json.dumps(selected_alerts)
-
-    response = openAIclient.chat.completions.create(
-        model = 'gpt-4o-mini',
-        messages = [{'role': 'system', 'content': SYSTEM_PROMPT}, 
-                    {'role': 'user', 'content': existing_rules},
-                    {'role': 'user', 'content': selected_alerts}],
-        functions = RESULT_CUSTOM_FUNCTION,
-        function_call = 'auto'
-    )
-    result = json.loads(response.choices[0].message.function_call.arguments)
-    pusher_client = get_pusher_client()
-    if pusher_client:      
-        try:
-            pusher_client.trigger("private-{}".format(tenant_id), "rules-aigen-created", result)
-        except Exception as e:
-            logger.error(f"Error triggering Pusher event: {e}")
+    except Exception as e:
+        logger.info(f"Error generating rules: {e}")
 
 
 def select_right_num_alerts(existing_rules, alerts, max_tokens):
@@ -398,3 +409,28 @@ def select_right_num_alerts(existing_rules, alerts, max_tokens):
         current_tokens += alert_tokens
     
     return selected_alerts
+
+
+def check_cel_rule(rule_str):
+    """
+    Validate a CEL (Common Expression Language) rule.
+
+    Parameters:
+        rule_str (str): The CEL rule as a string.
+
+    Returns:
+        bool: True if the rule is valid, False otherwise.
+    """
+    try:
+        # Initialize a CEL environment
+        env = celpy.Environment()
+        # Compile the CEL expression
+        ast = env.compile(rule_str)
+        # Create a program from the compiled AST
+        prgm = env.program(ast)
+        # If compilation and program creation succeed, the rule is valid
+        return True
+
+    except Exception:
+        # Handle any other exceptions
+        return False
