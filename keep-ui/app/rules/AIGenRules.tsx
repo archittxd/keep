@@ -74,7 +74,7 @@ const SortableHeaderCell: React.FC<SortableHeaderCellProps> = ({
 };
 
 export const AIGenRules: React.FC = () => {
-  const { _1, _2, _3, triggerGenRules } = useGenRules();
+  const {triggerGenRules } = useGenRules();
   const { data: session } = useSession();
   const [sorting, setSorting] = React.useState<SortingState>([]);
 
