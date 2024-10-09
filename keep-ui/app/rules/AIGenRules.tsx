@@ -79,7 +79,7 @@ export const AIGenRules: React.FC = () => {
   const [sorting, setSorting] = React.useState<SortingState>([]);
 
   const [isLoadingRules, setIsLoadingRules] = useState(true);
-  const [generatedRules, setGeneratedRules] = useState<AIGeneratedRule[]>([]);
+  const [generatedRules, setGeneratedRules] = useState<object>([]);
 
   const [loadingRows, setLoadingRows] = useState<{ [key: string]: boolean }>({});
   const [successRows, setSuccessRows] = useState<{ [key: string]: boolean }>({});
