@@ -358,7 +358,7 @@ def ruleGen(task_id, authenticated_entity):
         openAI_client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
 
 
-        existing_rules = get_rules(authenticated_entity);
+        existing_rules = get_rules(authenticated_entity)
         existing_rules = [{'name': x['name'], 'cel_query': x['definition_cel'], 'group_by': x['grouping_criteria'], 'timeframe_mins' : x['timeframe']} for x in existing_rules]
         existing_rules = 'here is a list of rules that already exist: ' + str(existing_rules)
 
@@ -422,25 +422,11 @@ def select_right_num_alerts(existing_rules, alerts, max_tokens):
 
 
 def check_cel_rule(rule_str):
-    """
-    Validate a CEL (Common Expression Language) rule.
-
-    Parameters:
-        rule_str (str): The CEL rule as a string.
-
-    Returns:
-        bool: True if the rule is valid, False otherwise.
-    """
     try:
-        # Initialize a CEL environment
         env = celpy.Environment()
-        # Compile the CEL expression
         ast = env.compile(rule_str)
-        # Create a program from the compiled AST
-        prgm = env.program(ast)
-        # If compilation and program creation succeed, the rule is valid
+        env.program(ast)
         return True
 
-    except Exception:
-        # Handle any other exceptions
+    except:
         return False
