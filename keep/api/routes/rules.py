@@ -337,14 +337,12 @@ def gen_rules(
     background_tasks: BackgroundTasks,
     request: Request,
     authenticated_entity: AuthenticatedEntity = Depends(
-        IdentityManagerFactory.get_auth_verifier(["read:rules"])  # TODO: change to read:alerts
+        IdentityManagerFactory.get_auth_verifier(["read:rules", "read:alerts"])
     ),
 ):
-    # Generate a UUID
+    
     task_id = str(uuid.uuid4())
-    # Add a background task, passing the UUID
     background_tasks.add_task(ruleGen, task_id, authenticated_entity)
-    # Return the UUID to the client
     return {"task_id": task_id}
 
 
@@ -357,7 +355,7 @@ def ruleGen(task_id, authenticated_entity):
             logger.error("OpenAI API key is not set. Can't auto gen rules.")
             return ""
 
-        openAIclient = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
+        openAI_client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
 
 
         existing_rules = get_rules(authenticated_entity);
@@ -372,7 +370,7 @@ def ruleGen(task_id, authenticated_entity):
         selected_alerts = select_right_num_alerts(existing_rules, db_alerts, MAX_ALERT_TOKENS)
         selected_alerts = "alert examples:" + json.dumps(selected_alerts)
 
-        response = openAIclient.chat.completions.create(
+        response = openAI_client.chat.completions.create(
             model = 'gpt-4o-mini',
             messages = [{'role': 'system', 'content': SYSTEM_PROMPT}, 
                         {'role': 'user', 'content': existing_rules},
