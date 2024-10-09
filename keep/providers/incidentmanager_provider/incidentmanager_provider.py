@@ -5,7 +5,6 @@ IncidentManagerProvider is a class that provides a way to read data from AWS Inc
 import dataclasses
 import logging
 import os
-from typing import Optional
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -414,7 +413,7 @@ class IncidentmanagerProvider(BaseProvider):
 
     @staticmethod
     def _format_alert(
-        event: dict, provider_instance: Optional["IncidentmanagerProvider"]
+        event: dict, provider_instance: "BaseProvider" = None
     ) -> AlertDto:
         logger = logging.getLogger(__name__)
         # if its confirmation event, we need to confirm the subscription

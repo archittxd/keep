@@ -19,7 +19,7 @@ import opentelemetry.trace as trace
 import requests
 
 from keep.api.bl.enrichments_bl import EnrichmentsBl
-from keep.api.core.db import get_enrichments
+from keep.api.core.db import get_custom_deduplication_rule, get_enrichments
 from keep.api.models.alert import AlertDto, AlertSeverity, AlertStatus
 from keep.api.models.db.alert import AlertActionType
 from keep.api.models.db.topology import TopologyServiceInDto
@@ -36,9 +36,10 @@ class BaseProvider(metaclass=abc.ABCMeta):
     PROVIDER_SCOPES: list[ProviderScope] = []
     PROVIDER_METHODS: list[ProviderMethod] = []
     FINGERPRINT_FIELDS: list[str] = []
-    PROVIDER_TAGS: list[Literal["alert", "ticketing", "messaging", "data", "queue", "topology"]] = (
-        []
-    )
+    PROVIDER_TAGS: list[
+        Literal["alert", "ticketing", "messaging", "data", "queue", "topology"]
+    ] = []
+    WEBHOOK_INSTALLATION_REQUIRED = False  # webhook installation is required for this provider, making it required in the UI
 
     def __init__(
         self,
@@ -285,14 +286,13 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @staticmethod
     def _format_alert(
-        event: dict, provider_instance: Optional["BaseProvider"] = None
+        event: dict, provider_instance: "BaseProvider" = None
     ) -> AlertDto | list[AlertDto]:
         """
         Format an incoming alert.
 
         Args:
             event (dict): The raw provider event payload.
-            provider_instance (Optional[&quot;BaseProvider&quot;]): The tenant provider instance if it was successfully loaded.
 
         Raises:
             NotImplementedError: For providers who does not implement this method.
@@ -306,12 +306,70 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def format_alert(
         cls,
         event: dict,
-        provider_instance: Optional["BaseProvider"],
+        tenant_id: str | None,
+        provider_type: str | None,
+        provider_id: str | None,
     ) -> AlertDto | list[AlertDto]:
         logger = logging.getLogger(__name__)
+
+        provider_instance: BaseProvider | None = None
+        if provider_id and provider_type and tenant_id:
+            try:
+                # To prevent circular imports
+                from keep.providers.providers_factory import ProvidersFactory
+
+                provider_instance: BaseProvider = (
+                    ProvidersFactory.get_installed_provider(
+                        tenant_id, provider_id, provider_type
+                    )
+                )
+            except Exception:
+                logger.exception(
+                    "Failed loading provider instance although all parameters were given",
+                    extra={
+                        "tenant_id": tenant_id,
+                        "provider_id": provider_id,
+                        "provider_type": provider_type,
+                    },
+                )
         logger.debug("Formatting alert")
         formatted_alert = cls._format_alert(event, provider_instance)
         logger.debug("Alert formatted")
+        # after the provider calculated the default fingerprint
+        #   check if there is a custom deduplication rule and apply
+        custom_deduplication_rule = get_custom_deduplication_rule(
+            tenant_id=tenant_id,
+            provider_id=provider_id,
+            provider_type=provider_type,
+        )
+
+        if not isinstance(formatted_alert, list):
+            formatted_alert.providerId = provider_id
+            formatted_alert.providerType = provider_type
+            formatted_alert = [formatted_alert]
+
+        else:
+            for alert in formatted_alert:
+                alert.providerId = provider_id
+                alert.providerType = provider_type
+
+        # if there is no custom deduplication rule, return the formatted alert
+        if not custom_deduplication_rule:
+            return formatted_alert
+        # if there is a custom deduplication rule, apply it
+        # apply the custom deduplication rule to calculate the fingerprint
+        for alert in formatted_alert:
+            logger.info(
+                "Applying custom deduplication rule",
+                extra={
+                    "tenant_id": tenant_id,
+                    "provider_id": provider_id,
+                    "alert_id": alert.id,
+                },
+            )
+            alert.fingerprint = cls.get_alert_fingerprint(
+                alert, custom_deduplication_rule.fingerprint_fields
+            )
         return formatted_alert
 
     @staticmethod
@@ -432,7 +490,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     def setup_webhook(
         self, tenant_id: str, keep_api_url: str, api_key: str, setup_alerts: bool = True
-    ):
+    ) -> dict | None:
         """
         Setup a webhook for the provider.
 
@@ -441,6 +499,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
             keep_api_url (str): _description_
             api_key (str): _description_
             setup_alerts (bool, optional): _description_. Defaults to True.
+
+        Returns:
+            dict | None: If some secrets needs to be saved, return them in a dict.
 
         Raises:
             NotImplementedError: _description_

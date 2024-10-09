@@ -10,6 +10,7 @@ import dateutil
 
 # third-parties
 from arq import Retry
+from fastapi.datastructures import FormData
 from sqlmodel import Session
 
 # internals
@@ -17,6 +18,7 @@ from keep.api.alert_deduplicator.alert_deduplicator import AlertDeduplicator
 from keep.api.bl.enrichments_bl import EnrichmentsBl
 from keep.api.bl.maintenance_windows_bl import MaintenanceWindowsBl
 from keep.api.core.db import (
+    bulk_upsert_alert_fields,
     get_alerts_by_fingerprint,
     get_all_presets,
     get_enrichment_with_session,
@@ -277,16 +279,16 @@ def __handle_formatted_events(
     alert_deduplicator = AlertDeduplicator(tenant_id)
 
     for event in formatted_events:
-        event_hash, event_deduplicated = alert_deduplicator.is_deduplicated(event)
-        event.alert_hash = event_hash
-        event.isDuplicate = event_deduplicated
+        # apply deduplication
+        # apply_deduplication set alert_hash and isDuplicate on event
+        event = alert_deduplicator.apply_deduplication(event)
 
     # filter out the deduplicated events
     deduplicated_events = list(
-        filter(lambda event: event.isDuplicate, formatted_events)
+        filter(lambda event: event.isFullDuplicate, formatted_events)
     )
     formatted_events = list(
-        filter(lambda event: not event.isDuplicate, formatted_events)
+        filter(lambda event: not event.isFullDuplicate, formatted_events)
     )
 
     # save to db
@@ -300,6 +302,40 @@ def __handle_formatted_events(
         provider_id,
         timestamp_forced,
     )
+
+    # let's save all fields to the DB so that we can use them in the future such in deduplication fields suggestions
+    # todo: also use it on correlation rules suggestions
+    for enriched_formatted_event in enriched_formatted_events:
+        logger.debug(
+            "Bulk upserting alert fields",
+            extra={
+                "alert_event_id": enriched_formatted_event.event_id,
+                "alert_fingerprint": enriched_formatted_event.fingerprint,
+            },
+        )
+        fields = []
+        for key, value in enriched_formatted_event.dict().items():
+            if isinstance(value, dict):
+                for nested_key in value.keys():
+                    fields.append(f"{key}_{nested_key}")
+            else:
+                fields.append(key)
+
+        bulk_upsert_alert_fields(
+            tenant_id=tenant_id,
+            fields=fields,
+            provider_id=enriched_formatted_event.providerId,
+            provider_type=enriched_formatted_event.providerType,
+            session=session
+        )
+
+        logger.debug(
+            "Bulk upserted alert fields",
+            extra={
+                "alert_event_id": enriched_formatted_event.event_id,
+                "alert_fingerprint": enriched_formatted_event.fingerprint,
+            },
+        )
 
     # after the alert enriched and mapped, lets send it to the elasticsearch
     elastic_client = ElasticClient(tenant_id=tenant_id)
@@ -350,7 +386,7 @@ def __handle_formatted_events(
     # Now we need to run the rules engine
     try:
         rules_engine = RulesEngine(tenant_id=tenant_id)
-        incidents: List[IncidentDto] = rules_engine.run_rules(enriched_formatted_events)
+        incidents: List[IncidentDto] = rules_engine.run_rules(enriched_formatted_events, session=session)
 
         # TODO: Replace with incidents workflow triggers. Ticket: https://github.com/keephq/keep/issues/1527
         # if new grouped incidents were created, we need to push them to the client
@@ -384,13 +420,19 @@ def __handle_formatted_events(
             logger.exception("Failed to push alert to the client")
 
     # Now we need to update the presets
+    # send with pusher
+    if notify_client:
+        pusher_client = get_pusher_client()
+        if not pusher_client:
+            return
     try:
         presets = get_all_presets(tenant_id)
+        rules_engine = RulesEngine(tenant_id=tenant_id)
         presets_do_update = []
         for preset in presets:
             # filter the alerts based on the search query
             preset_dto = PresetDto(**preset.to_dict())
-            filtered_alerts = RulesEngine.filter_alerts(
+            filtered_alerts = rules_engine.filter_alerts(
                 enriched_formatted_events, preset_dto.cel_query
             )
             # if not related alerts, no need to update
@@ -418,11 +460,6 @@ def __handle_formatted_events(
             ):
                 logger.info("Noisy preset is noisy")
                 preset_dto.should_do_noise_now = True
-        # send with pusher
-        if notify_client:
-            pusher_client = get_pusher_client()
-            if not pusher_client:
-                return
             try:
                 pusher_client.trigger(
                     f"private-{tenant_id}",
@@ -480,9 +517,18 @@ def process_event(
         except Exception:
             logger.exception("Failed to run pre-formatting extraction rules")
 
-        if provider_type is not None and isinstance(event, dict):
+        if (
+            provider_type is not None
+            and isinstance(event, dict)
+            or isinstance(event, FormData)
+        ):
             provider_class = ProvidersFactory.get_provider_class(provider_type)
-            event = provider_class.format_alert(event, None)
+            event = provider_class.format_alert(
+                tenant_id=tenant_id,
+                event=event,
+                provider_id=provider_id,
+                provider_type=provider_type,
+            )
             # SHAHAR: for aws cloudwatch, we get a subscription notification message that we should skip
             #         todo: move it to be generic
             if event is None and provider_type == "cloudwatch":

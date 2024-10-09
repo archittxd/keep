@@ -4,7 +4,6 @@ Grafana Provider is a class that allows to ingest/digest data from Grafana.
 
 import dataclasses
 import datetime
-from typing import Optional
 
 import pydantic
 import requests
@@ -51,6 +50,8 @@ class GrafanaProvider(BaseProvider):
     """Pull/Push alerts from Grafana."""
 
     KEEP_GRAFANA_WEBHOOK_INTEGRATION_NAME = "keep-grafana-webhook-integration"
+    FINGERPRINT_FIELDS = ["fingerprint"]
+
     PROVIDER_SCOPES = [
         ProviderScope(
             name="alert.rules:read",
@@ -195,7 +196,7 @@ class GrafanaProvider(BaseProvider):
 
     @staticmethod
     def _format_alert(
-        event: dict, provider_instance: Optional["GrafanaProvider"] = None
+        event: dict, provider_instance: "BaseProvider" = None
     ) -> AlertDto:
         alerts = event.get("alerts", [])
         formatted_alerts = []

@@ -6,7 +6,7 @@ import dataclasses
 import json
 import tempfile
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 from urllib.parse import urlencode, urljoin
 
 import pydantic
@@ -323,8 +323,7 @@ class AppdynamicsProvider(BaseProvider):
 
     @staticmethod
     def _format_alert(
-        event: dict,
-        provider_instance: Optional["AppdynamicsProvider"] = None,
+        event: dict, provider_instance: "BaseProvider" = None
     ) -> AlertDto:
         return AlertDto(
             id=event["id"],

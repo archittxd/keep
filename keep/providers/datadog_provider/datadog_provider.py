@@ -8,7 +8,6 @@ import json
 import logging
 import os
 import time
-from typing import Optional
 
 import pydantic
 import requests
@@ -790,7 +789,7 @@ class DatadogProvider(BaseTopologyProvider):
 
     @staticmethod
     def _format_alert(
-        event: dict, provider_instance: Optional["DatadogProvider"] = None
+        event: dict, provider_instance: "BaseTopologyProvider" = None
     ) -> AlertDto:
         tags_list = event.get("tags", "").split(",")
         tags_list.remove("monitor")

@@ -99,7 +99,7 @@ class PagerdutyProvider(BaseProvider):
                 "PagerdutyProvider requires either routing_key or api_key",
                 provider_id=self.provider_id,
             )
-        
+
     def validate_scopes(self):
         """
         Validate that the provider has the required scopes.
@@ -307,7 +307,7 @@ class PagerdutyProvider(BaseProvider):
 
     @staticmethod
     def _format_alert(
-        event: dict, provider_instance: typing.Optional["PagerdutyProvider"] = None
+        event: dict, provider_instance: "BaseProvider" = None
     ) -> AlertDto:
         actual_event = event.get("event", {})
         data = actual_event.get("data", {})
@@ -347,7 +347,6 @@ class PagerdutyProvider(BaseProvider):
             "conference_bridge": conference_bridge,
             "impacted_services": service,
         }
-
 
         return AlertDto(
             **data,

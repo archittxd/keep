@@ -32,7 +32,7 @@ import { getApiURL } from "utils/apiUrl";
 import { useMappings } from "utils/hooks/useMappingRules";
 import { MappingRule } from "./models";
 import { CreateableSearchSelect } from "@/components/ui/CreateableSearchSelect";
-import { useTopology } from "utils/hooks/useTopology";
+import { useTopology } from "@/app/topology/model";
 
 interface Props {
   editRule: MappingRule | null;
@@ -329,9 +329,14 @@ export default function CreateOrEditMapping({ editRule, editCallback }: Props) {
             <Badge color="gray">...</Badge>
           ) : (
             attributes
-              .filter(
-                (attribute) => !selectedLookupAttributes.includes(attribute)
-              )
+              .filter((attribute) => {
+                return !selectedLookupAttributes.some((lookupAttr) => {
+                  const parts = lookupAttr
+                    .split("&&")
+                    .map((part) => part.trim());
+                  return parts.includes(attribute);
+                });
+              })
               .map((attribute) => (
                 <Badge key={attribute} color="orange">
                   {attribute}

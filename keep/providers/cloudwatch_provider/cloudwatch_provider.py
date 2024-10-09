@@ -9,7 +9,6 @@ import json
 import logging
 import os
 import time
-from typing import Optional
 from urllib.parse import urlparse
 
 import boto3
@@ -504,7 +503,7 @@ class CloudwatchProvider(BaseProvider):
 
     @staticmethod
     def _format_alert(
-        event: dict, provider_instance: Optional["CloudwatchProvider"] = None
+        event: dict, provider_instance: "BaseProvider" = None
     ) -> AlertDto:
         logger = logging.getLogger(__name__)
         # if its confirmation event, we need to confirm the subscription

@@ -10,7 +10,8 @@ import classNames from "classnames";
 import { AILink } from "./AILink";
 import { TbTopologyRing } from "react-icons/tb";
 import { FaVolumeMute } from "react-icons/fa";
-import { useTopology } from "utils/hooks/useTopology";
+import { IoMdGitMerge } from "react-icons/io";
+import { useTopology } from "@/app/topology/model/useTopology";
 
 type NoiseReductionLinksProps = { session: Session | null };
 
@@ -41,6 +42,11 @@ export const NoiseReductionLinks = ({ session }: NoiseReductionLinksProps) => {
       </Disclosure.Button>
 
       <Disclosure.Panel as="ul" className="space-y-2 p-2 pr-4">
+        <li>
+          <LinkWithIcon href="/deduplication" icon={IoMdGitMerge}>
+            <Subtitle>Deduplication</Subtitle>
+          </LinkWithIcon>
+        </li>
         <li>
           <LinkWithIcon href="/rules" icon={Rules}>
             <Subtitle>Correlations</Subtitle>

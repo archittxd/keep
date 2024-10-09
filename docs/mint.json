@@ -45,6 +45,7 @@
           ]
         },
         "overview/maintenance-windows",
+        "overview/deduplication",
         "overview/examples"
       ]
     },
@@ -62,7 +63,8 @@
             "deployment/authentication/no-auth",
             "deployment/authentication/db-auth",
             "deployment/authentication/auth0-auth",
-            "deployment/authentication/keycloak-auth"
+            "deployment/authentication/keycloak-auth",
+            "deployment/authentication/oauth2proxy-auth"
           ]
         },
         {
@@ -70,7 +72,8 @@
           "pages": [
             "deployment/provision/overview",
             "deployment/provision/provider",
-            "deployment/provision/workflow"
+            "deployment/provision/workflow",
+            "deployment/provision/dashboard"
           ]
         },
         "deployment/secret-manager",
@@ -85,12 +88,9 @@
       "group": "Platform",
       "pages": [
         "platform/overview",
-        "platform/providers",
         "platform/alerts",
         "platform/alertseverityandstatus",
-        "platform/workflows",
         "platform/settings",
-        "platform/metrics",
         "platform/support"
       ]
     },
@@ -130,6 +130,7 @@
             "providers/documentation/incidentio-provider",
             "providers/documentation/incidentmanager-provider",
             "providers/documentation/jira-provider",
+            "providers/documentation/jira-on-prem-provider",
             "providers/documentation/kibana-provider",
             "providers/documentation/kubernetes-provider",
             "providers/documentation/linear_provider",
@@ -140,6 +141,7 @@
             "providers/documentation/mock-provider",
             "providers/documentation/mongodb-provider",
             "providers/documentation/mysql-provider",
+            "providers/documentation/mailgun-provider",
             "providers/documentation/netdata-provider",
             "providers/documentation/new-relic-provider",
             "providers/documentation/ntfy-provider",
@@ -163,6 +165,7 @@
             "providers/documentation/site24x7-provider",
             "providers/documentation/slack-provider",
             "providers/documentation/snowflake-provider",
+            "providers/documentation/smtp-provider",
             "providers/documentation/splunk-provider",
             "providers/documentation/squadcast-provider",
             "providers/documentation/ssh-provider",
@@ -187,7 +190,6 @@
       "group": "Workflows",
       "pages": [
         "workflows/overview",
-        "workflows/getting-started",
         {
           "group": "Syntax",
           "pages": [
@@ -283,7 +285,13 @@
         },
         {
           "group": "topology",
-          "pages": ["api-ref/topology/get-topology-data"]
+          "pages": [
+            "api-ref/topology/get-topology-data",
+            "api-ref/topology/create-application",
+            "api-ref/topology/delete-application",
+            "api-ref/topology/get-applications",
+            "api-ref/topology/update-application"
+          ]
         },
         {
           "group": "alerts",

@@ -18,8 +18,10 @@ logger = logging.getLogger(__name__)
 
 
 def main():
+    GENERATE_DEDUPLICATIONS = True
+    SLEEP_INTERVAL = float(os.environ.get("SLEEP_INTERVAL", 0.2))  # Configurable sleep interval from env variable
     keep_api_key = os.environ.get("KEEP_API_KEY")
-    keep_api_url = os.environ.get("KEEP_API_URL")
+    keep_api_url = os.environ.get("KEEP_API_URL") or "http://localhost:8080"
     if keep_api_key is None or keep_api_url is None:
         raise Exception("KEEP_API_KEY and KEEP_API_URL must be set")
 
@@ -35,25 +37,32 @@ def main():
         provider = provider_classes[provider_type]
         alert = provider.simulate_alert()
 
-        logger.info("Sending alert: {}".format(alert))
-        try:
-            env = random.choice(["production", "staging", "development"])
-            response = requests.post(
-                send_alert_url + f"?provider_id={provider_type}-{env}",
-                headers={"x-api-key": keep_api_key},
-                json=alert,
-            )
-        except Exception as e:
-            logger.error("Failed to send alert: {}".format(e))
-            time.sleep(0.2)
-            continue
+        # Determine number of times to send the same alert
+        num_iterations = 1
+        if GENERATE_DEDUPLICATIONS:
+            num_iterations = random.randint(1, 3)
 
-        if response.status_code != 202:
-            logger.error("Failed to send alert: {}".format(response.text))
-        else:
-            logger.info("Alert sent successfully")
+        for _ in range(num_iterations):
+            logger.info("Sending alert: {}".format(alert))
+            try:
+                env = random.choice(["production", "staging", "development"])
+                response = requests.post(
+                    send_alert_url + f"?provider_id={provider_type}-{env}",
+                    headers={"x-api-key": keep_api_key},
+                    json=alert,
+                )
+                response.raise_for_status()  # Raise an HTTPError for bad responses
+            except requests.exceptions.RequestException as e:
+                logger.error("Failed to send alert: {}".format(e))
+                time.sleep(SLEEP_INTERVAL)
+                continue
 
-        time.sleep(0.2)  # Wait for 10 seconds before sending the next alert
+            if response.status_code != 202:
+                logger.error("Failed to send alert: {}".format(response.text))
+            else:
+                logger.info("Alert sent successfully")
+
+            time.sleep(SLEEP_INTERVAL)  # Wait for the configured interval before sending the next alert
 
 
 if __name__ == "__main__":
