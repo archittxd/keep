@@ -79,7 +79,7 @@ export const AIGenRules: React.FC = () => {
   const [sorting, setSorting] = React.useState<SortingState>([]);
 
   const [isLoadingRules, setIsLoadingRules] = useState(true);
-  const [generatedRules, setGeneratedRules] = useState<object>([]);
+  const [generatedRules, setGeneratedRules] = useState<any>([]);
 
   const [loadingRows, setLoadingRows] = useState<{ [key: string]: boolean }>({});
   const [successRows, setSuccessRows] = useState<{ [key: string]: boolean }>({});
@@ -218,7 +218,7 @@ export const AIGenRules: React.FC = () => {
                 onClick={() => handleAddRule(rule)}
                 className="text-blue-500 hover:text-blue-700"
               >
-                <FaPlus />
+                <FaPlus /> 
               </button>
             )}
           </div>
