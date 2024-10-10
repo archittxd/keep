@@ -63,9 +63,7 @@ const SortableHeaderCell: React.FC<SortableHeaderCellProps> = ({
 
   return (
     <TableHeaderCell
-      className={`relative ${
-        column.getIsPinned() === false ? "hover:bg-slate-100" : ""
-      } group`}
+      className={`relative ${column.getIsPinned() ? "" : "hover:bg-slate-100"} group`}
     >
       <div className="flex items-center">
         {children}
