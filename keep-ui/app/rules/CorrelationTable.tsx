@@ -35,6 +35,7 @@ import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@tremor/react";
 import { BoltIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { AIGenRules } from './AIGenRules'; // Add this import at the top of the file
 import { FaArrowDown, FaArrowRight, FaArrowUp } from "react-icons/fa";
+import { Header } from "@tanstack/react-table"; // Ensure this import is present
 
 const TIMEFRAME_UNITS_FROM_SECONDS= {
   seconds: (amount: number) => amount,
