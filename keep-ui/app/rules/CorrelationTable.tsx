@@ -22,7 +22,9 @@ import {
   createColumnHelper,
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
   useReactTable,
+  SortingState,
 } from "@tanstack/react-table";
 import { DefaultRuleGroupType, parseCEL } from "react-querybuilder";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -32,6 +34,7 @@ import {PlusIcon} from "@radix-ui/react-icons";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@tremor/react";
 import { BoltIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { AIGenRules } from './AIGenRules'; // Add this import at the top of the file
+import { FaArrowDown, FaArrowRight, FaArrowUp } from "react-icons/fa";
 
 const TIMEFRAME_UNITS_FROM_SECONDS= {
   seconds: (amount: number) => amount,
@@ -44,6 +47,57 @@ const columnHelper = createColumnHelper<Rule>();
 
 type CorrelationTableProps = {
   rules: Rule[];
+};
+
+interface SortableHeaderCellProps {
+  header: Header<Rule, unknown>;
+  children: React.ReactNode;
+}
+
+const SortableHeaderCell: React.FC<SortableHeaderCellProps> = ({
+  header,
+  children,
+}) => {
+  const { column } = header;
+
+  return (
+    <TableHeaderCell
+      className={`relative ${
+        column.getIsPinned() === false ? "hover:bg-slate-100" : ""
+      } group`}
+    >
+      <div className="flex items-center">
+        {children}
+        {column.getCanSort() && (
+          <>
+            <div className="w-px h-5 mx-2 bg-gray-400"></div>
+            <Icon
+              className="cursor-pointer"
+              size="xs"
+              color="neutral"
+              onClick={(event) => {
+                event.stopPropagation();
+                const toggleSorting = header.column.getToggleSortingHandler();
+                if (toggleSorting) toggleSorting(event);
+              }}
+              tooltip={
+                column.getNextSortingOrder() === "asc"
+                  ? "Sort ascending"
+                  : column.getNextSortingOrder() === "desc"
+                  ? "Sort descending"
+                  : "Clear sort"
+              }
+              icon={column.getIsSorted() ? (
+                column.getIsSorted() === "asc" ? FaArrowDown : FaArrowUp
+              ) : (
+                FaArrowRight
+              )}
+            />
+          </>
+        )}
+      </div>
+    </TableHeaderCell>
+  );
 };
 
 export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
@@ -90,6 +144,7 @@ export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<string>("existing");
   const [isAIGenRulesLoaded, setIsAIGenRulesLoaded] = useState(false);
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   const onCorrelationClick = () => {
     setIsSidebarOpen(true);
@@ -114,10 +169,7 @@ export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
         header: "Correlation Name",
       }),
       columnHelper.accessor("definition_cel", {
-        header: "Description",
-        cell: (context) => (
-          <FormattedQueryCell query={parseCEL(context.getValue())} />
-        ),
+        header: "CEL Rule",
       }),
       columnHelper.accessor("grouping_criteria", {
         header: "Grouped by",
@@ -150,6 +202,11 @@ export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
     data: rules,
     columns: CORRELATION_TABLE_COLS,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onSortingChange: setSorting,
+    state: {
+      sorting,
+    },
   });
 
   return (
@@ -186,33 +243,41 @@ export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
           <TabPanel>
             <Card className="mt-4">
               <Table>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <TableHeaderCell key={header.id}>
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                      </TableHeaderCell>
-                    ))}
-                  </TableRow>
-                ))}
-                {table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    className="cursor-pointer hover:bg-slate-50 group"
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        onClick={() => router.push(`?id=${cell.row.original.id}`)}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
+                <TableHead>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow
+                      className="border-b border-tremor-border dark:border-dark-tremor-border"
+                      key={headerGroup.id}
+                    >
+                      {headerGroup.headers.map((header) => (
+                        <SortableHeaderCell
+                          header={header}
+                          key={header.id}
+                        >
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                        </SortableHeaderCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHead>
+                <TableBody>
+                  {table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      className="cursor-pointer even:bg-tremor-background-muted even:dark:bg-dark-tremor-background-muted hover:bg-slate-100"
+                      onClick={() => router.push(`?id=${row.original.id}`)}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
               </Table>
             </Card>
           </TabPanel>
