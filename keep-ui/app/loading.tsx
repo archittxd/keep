@@ -4,10 +4,12 @@ import Image from "next/image";
 export default function Loading({
   includeMinHeight = true,
   slowLoading = false,
+  loadingText = "Just a second, getting your data 🚨"
 }: {
   includeMinHeight?: boolean;
   slowLoading?: boolean;
-}) {
+  loadingText?: string;
+}) { 
   return (
     <main
       className={`flex flex-col items-center justify-center ${
@@ -21,7 +23,7 @@ export default function Loading({
         width={200}
         height={200}
       />
-      <Title>Just a second, getting your data 🚨</Title>
+      <Title>{loadingText}</Title>
       {slowLoading && (
         <Subtitle>
           This is taking a bit longer then usual, please wait...

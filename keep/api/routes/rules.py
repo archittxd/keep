@@ -348,6 +348,8 @@ def gen_rules(
 
 def ruleGen(task_id, authenticated_entity):
 
+    result = None
+
     try:
         logger.info(f"Generating rules for task {task_id}")
 
@@ -383,17 +385,19 @@ def ruleGen(task_id, authenticated_entity):
         logger.info("Got {} rules back from the llm".format(len(result['results'])))
 
         result['results'] = [rule for rule in result['results'] if check_cel_rule(rule['CELRule'])]
-
-        
-        pusher_client = get_pusher_client()
-        if pusher_client:      
-            try:
-                pusher_client.trigger("private-{}".format(tenant_id), "rules-aigen-created", result)
-            except Exception as e:
-                logger.error(f"Error triggering Pusher event: {e}")
     
     except Exception as e:
         logger.info(f"Error generating rules: {e}")
+        result = {'error': "Error generating rules"}
+
+
+    try:
+        pusher_client = get_pusher_client()
+        if pusher_client:
+            pusher_client.trigger("private-{}".format(tenant_id), "rules-aigen-created", result)
+    except Exception as e:
+        logger.error(f"Error triggering Pusher event: {e}")
+
 
 
 def select_right_num_alerts(existing_rules, alerts, max_tokens):
