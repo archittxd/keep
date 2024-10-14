@@ -1,7 +1,8 @@
 import {
   Badge,
   Button,
-  Card, Icon,
+  Card,
+  Icon,
   Subtitle,
   Table,
   TableBody,
@@ -28,24 +29,22 @@ import {
 } from "@tanstack/react-table";
 import { DefaultRuleGroupType, parseCEL } from "react-querybuilder";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormattedQueryCell } from "./FormattedQueryCell";
 import { DeleteRuleCell } from "./CorrelationSidebar/DeleteRule";
-import {PlusIcon} from "@radix-ui/react-icons";
+import { PlusIcon } from "@radix-ui/react-icons";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@tremor/react";
 import { BoltIcon, SparklesIcon } from "@heroicons/react/24/outline";
-import { AIGenRules } from './AIGenRules'; // Add this import at the top of the file
+import { AIGenRules } from "./AIGenRules";
 import { FaArrowDown, FaArrowRight, FaArrowUp } from "react-icons/fa";
-import { Header } from "@tanstack/react-table"; // Ensure this import is present
-
+import { Header } from "@tanstack/react-table";
+import "./CorrelationTabs.css";
 
 import { CorrelationPlaceholder } from "./CorrelationPlaceholder";
 
-
-const TIMEFRAME_UNITS_FROM_SECONDS= {
+const TIMEFRAME_UNITS_FROM_SECONDS = {
   seconds: (amount: number) => amount,
   minutes: (amount: number) => amount / 60,
   hours: (amount: number) => amount / 3600,
-  days: (amount: number) => amount  / 86400,
+  days: (amount: number) => amount / 86400,
 } as const;
 
 const columnHelper = createColumnHelper<Rule>();
@@ -87,14 +86,16 @@ const SortableHeaderCell: React.FC<SortableHeaderCellProps> = ({
                 column.getNextSortingOrder() === "asc"
                   ? "Sort ascending"
                   : column.getNextSortingOrder() === "desc"
-                  ? "Sort descending"
-                  : "Clear sort"
+                    ? "Sort descending"
+                    : "Clear sort"
               }
-              icon={column.getIsSorted() ? (
-                column.getIsSorted() === "asc" ? FaArrowDown : FaArrowUp
-              ) : (
-                FaArrowRight
-              )}
+              icon={
+                column.getIsSorted()
+                  ? column.getIsSorted() === "asc"
+                    ? FaArrowDown
+                    : FaArrowUp
+                  : FaArrowRight
+              }
             />
           </>
         )}
@@ -131,7 +132,9 @@ export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
       return {
         name: selectedRule.name,
         description: selectedRule.group_description ?? "",
-        timeAmount: TIMEFRAME_UNITS_FROM_SECONDS[timeunit](selectedRule.timeframe),
+        timeAmount: TIMEFRAME_UNITS_FROM_SECONDS[timeunit](
+          selectedRule.timeframe
+        ),
         timeUnit: timeunit,
         groupedAttributes: selectedRule.grouping_criteria,
         requireApprove: selectedRule.require_approve,
@@ -176,27 +179,26 @@ export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
       }),
       columnHelper.accessor("grouping_criteria", {
         header: "Grouped by",
-        cell: (context) => (
-          context.getValue().map((group, index) =>
+        cell: (context) =>
+          context.getValue().map((group, index) => (
             <>
-              <Badge color="orange" key={group}>{group}</Badge>
+              <Badge color="orange" key={group}>
+                {group}
+              </Badge>
               {context.getValue().length !== index + 1 && (
-              <Icon  icon={PlusIcon} size="xs" color="slate" />
-            )}
+                <Icon icon={PlusIcon} size="xs" color="slate" />
+              )}
             </>
-          )
-        ),
+          )),
       }),
       columnHelper.accessor("incidents", {
         header: "Incidents",
-        cell: (context) => (
-          context.getValue()
-        ),
+        cell: (context) => context.getValue(),
       }),
       columnHelper.display({
-        id: 'delete',
+        id: "delete",
         header: "",
-        cell: (context) => (<DeleteRuleCell ruleId={context.row.original.id} />),
+        cell: (context) => <DeleteRuleCell ruleId={context.row.original.id} />,
         enableSorting: false,
       }),
     ],
@@ -229,8 +231,8 @@ export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
           Create Correlation
         </Button>
       </div>
-      <TabGroup className="mt-6">
-        <TabList color="orange">
+      <TabGroup className="Correlation-Tabs mt-6">
+        <TabList color="orange" className="mb-2">
           <Tab icon={BoltIcon} onClick={() => setSelectedTab("existing")}>
             Existing Correlations
           </Tab>
@@ -246,56 +248,53 @@ export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
         </TabList>
         <TabPanels>
           <TabPanel>
-          {rules.length === 0 ? (
-            <CorrelationPlaceholder />
-          ) : (
-            
-            <Card className="mt-4">
-              <Table>
-                <TableHead>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow
-                      className="border-b border-tremor-border dark:border-dark-tremor-border"
-                      key={headerGroup.id}
-                    >
-                      {headerGroup.headers.map((header) => (
-                        <SortableHeaderCell
-                          header={header}
-                          key={header.id}
-                        >
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                        </SortableHeaderCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableHead>
-                <TableBody>
-                  {table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      className="cursor-pointer even:bg-tremor-background-muted even:dark:bg-dark-tremor-background-muted hover:bg-slate-100"
-                      onClick={() => router.push(`?id=${row.original.id}`)}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
+            {rules.length === 0 ? (
+              <CorrelationPlaceholder />
+            ) : (
+              <Card>
+                <Table>
+                  <TableHead>
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <TableRow
+                        className="border-b border-tremor-border dark:border-dark-tremor-border"
+                        key={headerGroup.id}
+                      >
+                        {headerGroup.headers.map((header) => (
+                          <SortableHeaderCell header={header} key={header.id}>
+                            {flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                          </SortableHeaderCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableHead>
+                  <TableBody>
+                    {table.getRowModel().rows.map((row) => (
+                      <TableRow
+                        key={row.id}
+                        className="cursor-pointer even:bg-tremor-background-muted even:dark:bg-dark-tremor-background-muted hover:bg-slate-100"
+                        onClick={() => router.push(`?id=${row.original.id}`)}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id}>
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
                 </Table>
               </Card>
-          )}
-            </TabPanel>
+            )}
+          </TabPanel>
           <TabPanel>
-            <Card className="mt-4">
-              <div className="p-4 text-center text-gray-500">
-                {isAIGenRulesLoaded ? <AIGenRules /> : null}
-              </div>
+            <Card className="flex-1 flex flex-col">
+              {isAIGenRulesLoaded ? <AIGenRules /> : null}
             </Card>
           </TabPanel>
         </TabPanels>

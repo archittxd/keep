@@ -1,5 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Icon, Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@tremor/react";
+import React, { useState, useEffect } from "react";
+import {
+  Icon,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@tremor/react";
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -8,17 +16,30 @@ import {
   getSortedRowModel,
   SortingState,
   flexRender,
-  Header
+  Header,
 } from "@tanstack/react-table";
-import { useRulePusherUpdates, AIGeneratedRule, useGenRules } from "utils/hooks/useRules";
-import { FaArrowDown, FaArrowRight, FaArrowUp, FaPlus, FaSpinner, FaSync } from "react-icons/fa";
-import { InformationCircleIcon, ExclamationTriangleIcon, QuestionMarkCircleIcon } from "@heroicons/react/24/solid";
+import {
+  useRulePusherUpdates,
+  AIGeneratedRule,
+  useGenRules,
+} from "utils/hooks/useRules";
+import {
+  FaArrowDown,
+  FaArrowRight,
+  FaArrowUp,
+  FaPlus,
+  FaSpinner,
+  FaSync,
+} from "react-icons/fa";
+import {
+  InformationCircleIcon,
+  ExclamationTriangleIcon,
+  QuestionMarkCircleIcon,
+} from "@heroicons/react/24/solid";
 import { useSession } from "next-auth/react";
 import { getApiURL } from "utils/apiUrl";
 import useSWR, { mutate } from "swr";
 import Loading from "app/loading";
-
-
 
 const columnHelper = createColumnHelper<AIGeneratedRule>();
 
@@ -56,14 +77,16 @@ const SortableHeaderCell: React.FC<SortableHeaderCellProps> = ({
                 column.getNextSortingOrder() === "asc"
                   ? "Sort ascending"
                   : column.getNextSortingOrder() === "desc"
-                  ? "Sort descending"
-                  : "Clear sort"
+                    ? "Sort descending"
+                    : "Clear sort"
               }
-              icon={column.getIsSorted() ? (
-                column.getIsSorted() === "asc" ? FaArrowDown : FaArrowUp
-              ) : (
-                FaArrowRight
-              )}
+              icon={
+                column.getIsSorted()
+                  ? column.getIsSorted() === "asc"
+                    ? FaArrowDown
+                    : FaArrowUp
+                  : FaArrowRight
+              }
             />
           </>
         )}
@@ -73,28 +96,32 @@ const SortableHeaderCell: React.FC<SortableHeaderCellProps> = ({
 };
 
 export const AIGenRules: React.FC = () => {
-  const {triggerGenRules } = useGenRules();
+  const { triggerGenRules } = useGenRules();
   const { data: session } = useSession();
   const [sorting, setSorting] = React.useState<SortingState>([]);
 
   const [isLoadingRules, setIsLoadingRules] = useState(true);
   const [generatedRules, setGeneratedRules] = useState<any>([]);
 
-  const [loadingRows, setLoadingRows] = useState<{ [key: string]: boolean }>({});
-  const [successRows, setSuccessRows] = useState<{ [key: string]: boolean }>({});
+  const [loadingRows, setLoadingRows] = useState<{ [key: string]: boolean }>(
+    {}
+  );
+  const [successRows, setSuccessRows] = useState<{ [key: string]: boolean }>(
+    {}
+  );
 
   const mutateAIGeneratedRules = (rules: AIGeneratedRule[]) => {
     setGeneratedRules(rules);
     setIsLoadingRules(false);
   };
 
-  const { data:serverGenRules } = useRulePusherUpdates();
+  const { data: serverGenRules } = useRulePusherUpdates();
 
   useEffect(() => {
-    if (Array.isArray(serverGenRules) && (0 === serverGenRules.length)) {
+    if (Array.isArray(serverGenRules) && 0 === serverGenRules.length) {
       return;
     }
-    
+
     mutateAIGeneratedRules(serverGenRules);
   }, [serverGenRules]);
 
@@ -108,17 +135,20 @@ export const AIGenRules: React.FC = () => {
     setLoadingRows((prev) => ({ ...prev, [ruleKey]: true }));
     try {
       const temp = {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.accessToken}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.accessToken}`,
         },
         body: JSON.stringify({
           ruleName: rule.ShortRuleName,
-          sqlQuery: { sql: '{new-version-not-adding-this}', params: ['no-params'] },
+          sqlQuery: {
+            sql: "{new-version-not-adding-this}",
+            params: ["no-params"],
+          },
           celQuery: rule.CELRule,
           timeframeInSeconds: rule.Timeframe,
-          timeUnit: 'minutes',
+          timeUnit: "minutes",
           groupingCriteria: rule.GroupBy,
           groupDescription: rule.ChainOfThought,
           requireApprove: false,
@@ -133,10 +163,10 @@ export const AIGenRules: React.FC = () => {
         mutate(`${apiUrl}/rules`); // Refresh the rules list
       } else {
         const result = await response.json();
-        console.error('Failed to add rule:', result);
+        console.error("Failed to add rule:", result);
       }
     } catch (error) {
-      console.error('Error adding rule:', error);
+      console.error("Error adding rule:", error);
     } finally {
       setLoadingRows((prev) => {
         const newLoadingRows = { ...prev };
@@ -146,83 +176,87 @@ export const AIGenRules: React.FC = () => {
     }
   };
 
-  const columns = React.useMemo(() => [
-    columnHelper.accessor("ShortRuleName", {
-      header: "Short Rule Name",
-    }),
-    columnHelper.accessor("Score", {
-      header: "Score",
-    }),
-    columnHelper.accessor("CELRule", {
-      header: "CEL Rule",
-      cell: (info) => <div className="text-wrap">{info.getValue()}</div>,
-    }),
-    columnHelper.accessor("Timeframe", {
-      header: "Timeframe",
-    }),
-    columnHelper.accessor("GroupBy", {
-      header: "Group By",
-      cell: (info) => info.getValue().join(", "),
-    }),
-    columnHelper.accessor("ChainOfThought", {
-      header: "Explanations",
-      cell: (info) => {
-        const rule = info.row.original;
-        return (
-          <div className="flex space-x-2">
-            <Icon
-              icon={InformationCircleIcon}
-              tooltip={`Thinking behind the rule: ${rule.ChainOfThought}`}
-              size="xs"
-              color="gray"
-              className="ml-1"
-              variant="solid"
-            />
-            <Icon
-              icon={ExclamationTriangleIcon}
-              tooltip={`Why this rule is too general: ${rule.WhyTooGeneral}`}
-              size="xs"
-              color="gray"
-              className="ml-1"
-              variant="solid"
-            />
-            <Icon
-              icon={QuestionMarkCircleIcon}
-              tooltip={`Why this rule is too specific: ${rule.WhyTooSpecific}`}
-              size="xs"
-              color="gray"
-              className="ml-1"
-              variant="solid"
-            />
-          </div>
-        );
-      },
-    }),
-    columnHelper.display({
-      id: 'add',
-      header: 'Add',
-      cell: (info) => {
-        const rule = info.row.original;
-        const ruleKey = rule.ShortRuleName;
-        return (
-          <div className="flex justify-center items-center">
-            {loadingRows[ruleKey] ? (
-              <FaSpinner className="animate-spin text-gray-500" />
-            ) : successRows[ruleKey] ? (
-              <div className="text-green-500">Added!</div>
-            ) : (
-              <button
-                onClick={() => handleAddRule(rule)}
-                className="text-blue-500 hover:text-blue-700"
-              >
-                <FaPlus /> 
-              </button>
-            )}
-          </div>
-        );
-      },
-    }),
-  ] as ColumnDef<AIGeneratedRule>[], [loadingRows, successRows]);
+  const columns = React.useMemo(
+    () =>
+      [
+        columnHelper.accessor("ShortRuleName", {
+          header: "Short Rule Name",
+        }),
+        columnHelper.accessor("Score", {
+          header: "Score",
+        }),
+        columnHelper.accessor("CELRule", {
+          header: "CEL Rule",
+          cell: (info) => <div className="text-wrap">{info.getValue()}</div>,
+        }),
+        columnHelper.accessor("Timeframe", {
+          header: "Timeframe",
+        }),
+        columnHelper.accessor("GroupBy", {
+          header: "Group By",
+          cell: (info) => info.getValue().join(", "),
+        }),
+        columnHelper.accessor("ChainOfThought", {
+          header: "Explanations",
+          cell: (info) => {
+            const rule = info.row.original;
+            return (
+              <div className="flex space-x-2">
+                <Icon
+                  icon={InformationCircleIcon}
+                  tooltip={`Thinking behind the rule: ${rule.ChainOfThought}`}
+                  size="xs"
+                  color="gray"
+                  className="ml-1"
+                  variant="solid"
+                />
+                <Icon
+                  icon={ExclamationTriangleIcon}
+                  tooltip={`Why this rule is too general: ${rule.WhyTooGeneral}`}
+                  size="xs"
+                  color="gray"
+                  className="ml-1"
+                  variant="solid"
+                />
+                <Icon
+                  icon={QuestionMarkCircleIcon}
+                  tooltip={`Why this rule is too specific: ${rule.WhyTooSpecific}`}
+                  size="xs"
+                  color="gray"
+                  className="ml-1"
+                  variant="solid"
+                />
+              </div>
+            );
+          },
+        }),
+        columnHelper.display({
+          id: "add",
+          header: "Add",
+          cell: (info) => {
+            const rule = info.row.original;
+            const ruleKey = rule.ShortRuleName;
+            return (
+              <div className="flex justify-center items-center">
+                {loadingRows[ruleKey] ? (
+                  <FaSpinner className="animate-spin text-gray-500" />
+                ) : successRows[ruleKey] ? (
+                  <div className="text-green-500">Added!</div>
+                ) : (
+                  <button
+                    onClick={() => handleAddRule(rule)}
+                    className="text-blue-500 hover:text-blue-700"
+                  >
+                    <FaPlus />
+                  </button>
+                )}
+              </div>
+            );
+          },
+        }),
+      ] as ColumnDef<AIGeneratedRule>[],
+    [loadingRows, successRows]
+  );
 
   const table = useReactTable({
     columns,
@@ -236,21 +270,29 @@ export const AIGenRules: React.FC = () => {
   });
 
   if (isLoadingRules) {
-    return <Loading loadingText="Generating AI recommendations..." extraLoadingText="This might take a handfull of minutes" />;
+    return (
+      <Loading
+        className="m-auto"
+        includeMinHeight={false}
+        loadingText="Generating AI recommendations..."
+        extraLoadingText="This might take a handfull of minutes"
+      />
+    );
   }
 
   if (generatedRules.error) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="text-center">
-          <p className="text-lg font-semibold text-red-600">{generatedRules.error}</p>
+          <p className="text-lg font-semibold text-red-600">
+            {generatedRules.error}
+          </p>
           <p className="text-sm text-gray-500">Please try again later</p>
         </div>
       </div>
     );
   }
 
-  
   return (
     <div className="space-y-4">
       <div className="flex flex-col items-start">
@@ -260,7 +302,9 @@ export const AIGenRules: React.FC = () => {
         >
           Generate more rules
         </button>
-        <h2 className="text-xl font-semibold mt-4 self-center">AI Generated Rules</h2>
+        <h2 className="text-xl font-semibold mt-4 self-center">
+          AI Generated Rules
+        </h2>
       </div>
       <p className="text-center">{generatedRules.summery}</p>
       <Table>
@@ -271,10 +315,7 @@ export const AIGenRules: React.FC = () => {
               key={headerGroup.id}
             >
               {headerGroup.headers.map((header) => (
-                <SortableHeaderCell
-                  header={header}
-                  key={header.id}
-                >
+                <SortableHeaderCell header={header} key={header.id}>
                   {flexRender(
                     header.column.columnDef.header,
                     header.getContext()
@@ -292,8 +333,8 @@ export const AIGenRules: React.FC = () => {
               <TableRow
                 className={`${
                   successRows[ruleKey]
-                    ? 'bg-green-100'
-                    : 'even:bg-tremor-background-muted even:dark:bg-dark-tremor-background-muted hover:bg-slate-100'
+                    ? "bg-green-100"
+                    : "even:bg-tremor-background-muted even:dark:bg-dark-tremor-background-muted hover:bg-slate-100"
                 } cursor-pointer`}
                 key={row.id}
               >
@@ -312,5 +353,3 @@ export const AIGenRules: React.FC = () => {
 };
 
 export default AIGenRules;
-
-
