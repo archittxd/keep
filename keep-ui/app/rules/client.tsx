@@ -1,7 +1,6 @@
 "use client";
 
 import { useRules } from "utils/hooks/useRules";
-import { CorrelationPlaceholder } from "./CorrelationPlaceholder";
 import { CorrelationTable } from "./CorrelationTable";
 import Loading from "app/loading";
 
@@ -10,10 +9,6 @@ export const Client = () => {
 
   if (isLoading) {
     return <Loading />;
-  }
-
-  if (rules.length === 0) {
-    return <CorrelationPlaceholder />;
   }
 
   return <CorrelationTable rules={rules} />;

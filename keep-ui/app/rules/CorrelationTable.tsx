@@ -37,6 +37,10 @@ import { AIGenRules } from './AIGenRules'; // Add this import at the top of the 
 import { FaArrowDown, FaArrowRight, FaArrowUp } from "react-icons/fa";
 import { Header } from "@tanstack/react-table"; // Ensure this import is present
 
+
+import { CorrelationPlaceholder } from "./CorrelationPlaceholder";
+
+
 const TIMEFRAME_UNITS_FROM_SECONDS= {
   seconds: (amount: number) => amount,
   minutes: (amount: number) => amount / 60,
@@ -189,9 +193,10 @@ export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
           context.getValue()
         ),
       }),
-      columnHelper.display({
-        id: "menu",
-        cell: (context) => <DeleteRuleCell ruleId={context.row.original.id} />,
+      columnHelper.accessor("delete_rule", {
+        header: "",
+        cell: (context) => (<DeleteRuleCell ruleId={context.row.original.id} />),
+        enableSorting: false, // Disable sorting for the Delete column
       }),
     ],
     []
@@ -239,7 +244,11 @@ export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
           </Tab>
         </TabList>
         <TabPanels>
-          <TabPanel>
+
+          {rules.length === 0 ? (
+            <CorrelationPlaceholder />
+          ) : (
+            <TabPanel>
             <Card className="mt-4">
               <Table>
                 <TableHead>
@@ -277,9 +286,12 @@ export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
-            </Card>
-          </TabPanel>
+                </Table>
+              </Card>
+            </TabPanel>
+          )}
+
+
           <TabPanel>
             <Card className="mt-4">
               <div className="p-4 text-center text-gray-500">

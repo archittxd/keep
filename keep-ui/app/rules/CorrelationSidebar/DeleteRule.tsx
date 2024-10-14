@@ -37,7 +37,7 @@ export const DeleteRuleCell = ({ ruleId }: DeleteRuleCellProps) => {
 
   return (
     <Button
-      className="invisible group-hover:visible"
+      className=""
       onClick={onDeleteRule}
       variant="secondary"
       color="red"
