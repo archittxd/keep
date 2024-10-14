@@ -4,11 +4,13 @@ import Image from "next/image";
 export default function Loading({
   includeMinHeight = true,
   slowLoading = false,
-  loadingText = "Just a second, getting your data 🚨"
+  loadingText = "Just a second, getting your data 🚨",
+  extraLoadingText = ""
 }: {
   includeMinHeight?: boolean;
   slowLoading?: boolean;
   loadingText?: string;
+  extraLoadingText?: string;
 }) { 
   return (
     <main
@@ -24,6 +26,11 @@ export default function Loading({
         height={200}
       />
       <Title>{loadingText}</Title>
+      
+      {extraLoadingText && (
+        <Subtitle>{extraLoadingText}</Subtitle>
+      )}
+      
       {slowLoading && (
         <Subtitle>
           This is taking a bit longer then usual, please wait...

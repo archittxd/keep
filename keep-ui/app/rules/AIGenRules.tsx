@@ -236,7 +236,7 @@ export const AIGenRules: React.FC = () => {
   });
 
   if (isLoadingRules) {
-    return <Loading loadingText="Generating AI recommendations..." />;
+    return <Loading loadingText="Generating AI recommendations..." extraLoadingText="This might take a handfull of minutes" />;
   }
 
   if (generatedRules.error) {
