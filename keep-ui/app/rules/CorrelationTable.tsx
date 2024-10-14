@@ -244,11 +244,11 @@ export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
           </Tab>
         </TabList>
         <TabPanels>
-
+          <TabPanel>
           {rules.length === 0 ? (
             <CorrelationPlaceholder />
           ) : (
-            <TabPanel>
+            
             <Card className="mt-4">
               <Table>
                 <TableHead>
@@ -288,10 +288,8 @@ export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
                 </TableBody>
                 </Table>
               </Card>
-            </TabPanel>
           )}
-
-
+            </TabPanel>
           <TabPanel>
             <Card className="mt-4">
               <div className="p-4 text-center text-gray-500">

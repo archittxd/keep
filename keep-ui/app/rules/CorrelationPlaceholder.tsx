@@ -20,13 +20,6 @@ export const CorrelationPlaceholder = () => {
             dedicated place
           </Subtitle>
         </div>
-        <Button
-          className="mb-10"
-          color="orange"
-          onClick={() => onCorrelationClick()}
-        >
-          Create Correlation
-        </Button>
         <PlaceholderSankey className="max-w-full" />
       </Card>
       <CorrelationSidebar
