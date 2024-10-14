@@ -193,10 +193,11 @@ export const CorrelationTable = ({ rules }: CorrelationTableProps) => {
           context.getValue()
         ),
       }),
-      columnHelper.accessor("delete_rule", {
+      columnHelper.display({
+        id: 'delete',
         header: "",
         cell: (context) => (<DeleteRuleCell ruleId={context.row.original.id} />),
-        enableSorting: false, // Disable sorting for the Delete column
+        enableSorting: false,
       }),
     ],
     []
