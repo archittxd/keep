@@ -37,7 +37,6 @@ export const DeleteRuleCell = ({ ruleId }: DeleteRuleCellProps) => {
 
   return (
     <Button
-      className=""
       onClick={onDeleteRule}
       variant="secondary"
       color="red"

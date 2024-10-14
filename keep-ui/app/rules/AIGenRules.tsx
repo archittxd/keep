@@ -91,8 +91,6 @@ export const AIGenRules: React.FC = () => {
   const { data:serverGenRules } = useRulePusherUpdates();
 
   useEffect(() => {
-    console.log("serverGenRules", serverGenRules);
-
     if (Array.isArray(serverGenRules) && (0 === serverGenRules.length)) {
       return;
     }
