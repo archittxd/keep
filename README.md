@@ -64,7 +64,7 @@
 3. **Automation**: Trigger workflows for alert enrichment and response.
 4. **Developer-first**: Keep is API-first and lets you manage your workflows as code.
 5. **Works with every tool**: Plenty of [supported providers](#supported-providers) and more to come.
-
+ #ARCHIT WAS HERE
 
 ## Workflows
 The easiest way of thinking about Workflow in Keep is GitHub Actions. At its core, a Workflow in Keep is a declarative YAML file, composed of triggers, steps, and actions and serves to manage, enrich, and automate responses to alerts:
